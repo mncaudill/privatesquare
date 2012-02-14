@@ -186,6 +186,11 @@ q {
     font-weight: 700;
 }
 
+.checkin .venue a{
+    color: #000;
+    text-decoration:none;
+}
+
 .checkin .date {
     font-size: small;
 }
@@ -193,4 +198,22 @@ q {
 .checkin .map {
     border: solid thin;
     margin-top: 5px;
+}
+
+#pagination {
+    text-align:center;
+}
+
+.abook {
+    margin-bottom: 10px;
+}
+
+.checkins {
+    margin: 0px;
+    padding: 0px;
+}
+
+.checkins li{
+    line-height: 1.5em;
+    list-style-type:none;
 }
