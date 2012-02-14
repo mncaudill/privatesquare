@@ -39,15 +39,6 @@
 
 <div id="again">do it again!</div>
 
-{if $user_checkins}
-	<h2>Recent Checkins</h2>
-	<ul>
-	{foreach from=$user_checkins item="venue"}
-		<li><a href="http://foursquare.com/venue/{$venue.venue_id}/">{$venue.name|escape}</a></li>
-	{/foreach}
-	</ul>
-{/if}
-
 </div>
 
 <script type="text/javascript">
