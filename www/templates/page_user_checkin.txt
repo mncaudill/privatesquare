@@ -1,28 +1,27 @@
 {capture assign="page_title"}{$owner.username} @ {$checkin.venue.name}{/capture}
-{capture assign="extra_head"}
-<script type="text/javascript" src="{$cfg.abs_root_url}javascript/htmapl-standalone.min.js"></script> 
-{/capture}
 {include file="inc_head.txt"}
 
+<h3 style="margin-top:0px;"><a href="{$checkin.venue|@urls_venue}">{$checkin.venue.name|escape}</a></h3>
+
+{include file="inc_checkin_venue.txt" venue=$checkin.venue}
+
 {assign var="status_id" value=$checkin.status_id}
-
-<h2 style="margin-top:0px;"><a href="{$cfg.abs_root_url}venue/{$checkin.venue_id|escape}">{$checkin.venue.name|escape}</a></h2>
-
-<p style="font-size:small;">
-{if $is_own}
-On <a href="">{$checkin.created|date_format|escape}</a> at {$checkin.created|date_format:"%k:%M"|escape} you said <q>{$status_map.$status_id|escape}</q>.{if $checkin.checkin_id} You also told foursquare about it.{/if}</p>
-{else}
-On {$checkin.created|date_format|escape} at {$checkin.created|date_format:"%k:%M"|escape} {$owner.username|escape} said <q>{$status_map.$status_id|escape}</q>.</p>
-{/if}
-</p>
-
-{* TO DO: merge/reuse all of the "i am here again" code from page_venue.txt *}
 
 <div class="checkin">
 	<div class="map" data-zoom="14" data-center="{$checkin.venue.latitude|escape},{$checkin.venue.longitude|escape}" data-hash="false" data-interactive="false" data-provider="toner">
 		<div class="marker marker-history" data-location="{$checkin.venue.latitude|escape},{$checkin.venue.longitude|escape}"><span class="marker-history-text">{$checkin.venue.name|escape}</span></div>
 	</div>
 </div>
+
+<p style="font-size:small;">
+{if $is_own}
+On <a href="{$owner|@urls_history_for_user}{$checkin.created|date_format:"%Y-%m-%d"|escape}">{$checkin.created|date_format|escape}</a> at {$checkin.created|date_format:"%k:%M"|escape} you said <q>{$status_map.$status_id|escape}</q>.{if $checkin.checkin_id} You also told foursquare about it.{/if}</p>
+{else}
+On <a href="{$owner|@urls_history_for_user}{$checkin.created|date_format:"%Y-%m-%d"|escape}">{$checkin.created|date_format|escape}</a> at {$checkin.created|date_format:"%k:%M"|escape} {$owner.username|escape} said <q>{$status_map.$status_id|escape}</q>.</p>
+{/if}
+</p>
+
+<button id="iamhere">I am here again</button>
 
 {* TO DO: next/previous *}
 
@@ -33,11 +32,11 @@ On {$checkin.created|date_format|escape} at {$checkin.created|date_format:"%k:%M
 <h3>Details</h3>
 
 <ul>
-<li><a href="">foursquare:venue={$checkin.venue_id|escape}</a></li>
+<li><a href="{$checkin.venue|@foursquare_urls_venue}">foursquare:venue={$checkin.venue_id|escape}</a></li>
 {if $checkin.checkin_id}
-<li><a href="">foursquare:id={$checkin.checkin_id|escape}</a></li>
+<li><a href="{$checkin|@foursquare_urls_checkin}">foursquare:id={$checkin.checkin_id|escape}</a></li>
 {/if}
-<li><a href="">privatesquare:id={$checkin.id|escape}</a></li>
+<li><a href="{$checkin|@urls_checkin}">privatesquare:id={$checkin.id|escape}</a></li>
 </ul>
 
 </div>
@@ -48,7 +47,42 @@ On {$checkin.created|date_format|escape} at {$checkin.created|date_format:"%k:%M
 
 $(document).ready(function(){
 
+	/*
+	  TO DO: merge with JS in page_venue.txt ... maybe
+	  it's basically all the same but with tiny subtle
+	  differences ... so, something (20120220/straup)
+	*/
+
 	$(".map").htmapl();
+
+	var show_checkin_form = function(){
+		privatesquare_unset_status();
+
+		$('#iamhere').attr('disabled', 'disabled');
+		$('#checkin_venue').show();
+	};
+
+	$('#iamhere').click(show_checkin_form);
+
+	$('#checkin_form').submit(function(){
+
+		var _onsuccess = function(rsp){
+			privatesquare_checkin_onsuccess(rsp, show_checkin_form);
+			$('#iamhere').removeAttr('disabled');
+		}
+
+		var args = privatesquare_gather_args();
+		privatesquare_checkin(args, _onsuccess);
+
+		$("#checkin_venue").hide();
+
+		privatesquare_set_status("Talking to the sky...");
+		return false;	
+	});
+
+	$('#iamhere').removeAttr('disabled');
+	$('#iamhere').show();
+
 });
 
 {/literal}
