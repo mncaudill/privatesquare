@@ -1,0 +1,27 @@
+<span class="weather">
+{if $short_form}
+
+{if $weather.source=='google'}
+
+{if $cfg.weather_tracking_measure=='US'}
+<span class="weather_temp">{$weather.temp_f|escape}° F</span><span class="weather_condition"> {$weather.condition|strtolower|escape}</span>
+{else}
+<span class="weather_temp">{$weather.temp_c|escape}° C</span><span class="weather_condition"> {$weather.condition|strtolower|escape}</span>
+{/if}
+
+{/if}
+
+{else}
+
+{if $weather.source=='google'}
+
+{if $cfg.weather_tracking_measure=='US'}
+<span class="weather_temp">It was {$weather.temp_f|escape}° F</span><span class="weather_condition"> and {$weather.condition|strtolower|escape}</span>
+{else}
+<span class="weather_temp">It was {$weather.temp_c|escape}° C</span><span class="weather_condition"> and {$weather.condition|strtolower|escape}</span>
+{/if}
+
+{/if}
+
+{/if}
+</span>

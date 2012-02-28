@@ -87,12 +87,28 @@
 		$count = count($rsp['rows']);
 
 		for ($i=0; $i < $count; $i++){
-			$venue_id = $rsp['rows'][$i]['venue_id'];
-			$venue = foursquare_venues_get_by_venue_id($venue_id); 
-			$rsp['rows'][$i]['venue'] = $venue;
+			privatesquare_checkins_inflate_extras($rsp['rows'][$i]);
 		}
 
 		return $rsp;
+	}
+
+ 	#################################################################
+
+	function privatesquare_checkins_inflate_extras(&$row){
+
+		$venue_id = $row['venue_id'];
+		$venue = foursquare_venues_get_by_venue_id($venue_id); 
+		$row['venue'] = $venue;
+
+		if ($row['weather']){
+
+			if ($weather = json_decode($row['weather'], "as hash")){
+				$row['weather'] = $weather;
+			}
+		}
+
+		# note the pass by ref
 	}
 
  	#################################################################
@@ -103,7 +119,7 @@
 	# Dunno. On the other hand we're just going to enjoy not having to
 	# think about it for the moment. KTHXBYE (20120226/straup)
 
-	function privatesquare_checkins_export_for_user(&$user){
+	function privatesquare_checkins_export_for_user(&$user, $more=array()){
 
 		$rows = array();
 
@@ -114,6 +130,13 @@
 			'per_page' => 100,
 		);
 
+		# Note the order of things here: don't overwrite
+		# what we've set in $args above
+
+		if (count($more)){
+			$args = array_merge($more, $args);
+		}
+
 		while ((! isset($count_pages)) || ($args['page'] <= $count_pages)){
 
 			if (! isset($count_pages)){
@@ -123,7 +146,7 @@
 			# per the above we may need to add a flag to *not* fetch
 			# the full venue listing out of the database (20120226/straup)
 
-			$rsp = privatesquare_checkins_for_user($user, $args);
+			$rsp = privatesquare_checkins_for_user($user, $args, $more);
 			$rows = array_merge($rows, $rsp['rows']);
 
 			$args['page'] += 1;
@@ -185,10 +208,18 @@
 	function privatesquare_checkins_get_by_id(&$user, $id){
 
 		if (is_numeric($id)){
-			return privatesquare_checkins_get_by_privatesquare_id($user, $id);
+			$row = privatesquare_checkins_get_by_privatesquare_id($user, $id);
 		}
 
-		return privatesquare_checkins_get_by_foursquare_id($user, $id);
+		else {
+			$row = privatesquare_checkins_get_by_foursquare_id($user, $id);
+		}
+
+		if ($row){
+			privatesquare_checkins_inflate_extras($row);
+		}
+
+		return $row;
 	}
 
  	#################################################################
