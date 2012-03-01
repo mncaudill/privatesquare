@@ -194,6 +194,7 @@ q {
 
 .checkin .date {
     font-size: small;
+    margin-bottom:8px;
 }
 
 .checkin .map {
@@ -240,9 +241,33 @@ button {
     padding: 5px;
 }
 
-#when {
+.header-right {
     text-align:right;
     margin-top:0px;
+    color:#adadad;
+}
+
+.header-left {
+    text-align:left;
+    margin-top:0px;
+    margin-bottom:10px;
+    color:#333;
+}
+
+.header-left a {
+    text-decoration: none;
+    color:#333;
+}
+
+.header-loc {
+    color:#adadad;
+    font-weight: 100;
+    margin-left:10px;
+}
+
+
+.header-loc a {
+    text-decoration: none;
     color:#adadad;
 }
 
@@ -285,10 +310,11 @@ button {
 
 .weather {
     color:#ccc;
-    display:block;
     margin-top:5px;
+    margin-left:5px;
 }
 
 .checkins .weather {
     display: inline !important;
 }
+

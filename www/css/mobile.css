@@ -69,8 +69,25 @@ input[type=submit] {
 .weather {
     margin-top:2px;
     margin-bottom:3px;
+    margin-left:0px;
+    display:block;
 }
 
-.checkins .weather .weather_condition {
-    display: none;
+
+.header-right {
+    display:none;
+}
+
+.header-loc {
+    font-size:small;
+    display: block;
+    margin-left:0px;
+}
+
+#history .header-loc {
+    display:none;
+}
+
+.checkins .weather_condition {
+    display:none;
 }

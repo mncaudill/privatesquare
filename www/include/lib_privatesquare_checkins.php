@@ -2,6 +2,7 @@
 
 	loadlib("foursquare_venues");
 	loadlib("datetime_when");
+	loadlib("reverse_geoplanet");
 
  	#################################################################
 
@@ -61,8 +62,6 @@
 
 		$sql = "SELECT * FROM PrivatesquareCheckins WHERE user_id='{$enc_user}'";
 
-		# TO DO: indexes
-
 		if (isset($more['when'])){
 			list($start, $stop) = datetime_when_parse($more['when']);
 			$enc_start = AddSlashes(strtotime($start));
@@ -76,6 +75,11 @@
 			$sql .= " AND venue_id='{$enc_venue}'";
 		}
 
+		else if (isset($more['locality'])){
+			$enc_locality = AddSlashes($more['locality']);
+			$sql .= " AND locality='{$enc_locality}'";
+		}
+
 		$sql .= " ORDER BY created DESC";
 
 		$rsp = db_fetch_paginated_users($cluster_id, $sql, $more);
@@ -87,7 +91,7 @@
 		$count = count($rsp['rows']);
 
 		for ($i=0; $i < $count; $i++){
-			privatesquare_checkins_inflate_extras($rsp['rows'][$i]);
+			privatesquare_checkins_inflate_extras($rsp['rows'][$i], $more);
 		}
 
 		return $rsp;
@@ -95,7 +99,197 @@
 
  	#################################################################
 
-	function privatesquare_checkins_inflate_extras(&$row){
+	function privatesquare_checkins_localities_for_user(&$user, $more=array()){
+
+		$defaults = array(
+			'page' => 1,
+			'per_page' => 10,
+		);
+
+		$more = array_merge($defaults, $more);
+
+		$cluster_id = $user['cluster_id'];
+		$enc_user = AddSlashes($user['id']);
+
+		# TO DO: indexes
+
+		# Note: we do pagination in memory because we're going to
+		# sort the results by count; this all happens below.
+
+		$sql = "SELECT locality, COUNT(id) AS count FROM PrivatesquareCheckins WHERE user_id='{$enc_user}' GROUP BY locality";
+		$rsp = db_fetch_users($cluster_id, $sql);
+
+		if (! $rsp['ok']){
+			return $rsp;
+		}
+
+		$tmp = array();
+
+		foreach ($rsp['rows'] as $row){
+
+			if (! $row['locality']){
+				continue;
+			}
+
+			$tmp[$row['locality']] = $row['count'];
+		}
+
+		arsort($tmp);
+
+		$woeids = array_keys($tmp);
+		$total_count = count($woeids);
+
+		#
+
+		$page_count = ceil($total_count / $more['per_page']);
+		$last_page_count = $total_count - (($page_count - 1) * $more['per_page']);
+
+		$pagination = array(
+			'total_count' => $total_count,
+			'page' => $more['page'],
+			'per_page' => $more['per_page'],
+			'page_count' => $page_count,
+		);
+
+		if ($GLOBALS['cfg']['pagination_assign_smarty_variable']){
+			$GLOBALS['smarty']->assign('pagination', $pagination);
+		}
+
+		#
+
+		$offset = $more['per_page'] * ($more['page'] - 1);
+		$woeids = array_slice($woeids, $offset, $more['per_page']);
+
+		$localities = array();
+
+		foreach ($woeids as $woeid){
+
+			$count = $tmp[$woeid];
+
+			$row = reverse_geoplanet_get_by_woeid($woeid, 'locality');
+
+			# what if ! $row? should never happen but...
+
+			$row['count'] = $count;
+
+			# Maybe always get this? Filtering may just be a
+			# pointless optimization (20120229/straup)
+
+			if ($count > 1){
+
+				$venues_more = array(
+					'locality' => $woeid,
+					'stats_mode' => 1,
+				);
+
+				$venues_rsp = privatesquare_checkins_venues_for_user($user, $venues_more);
+				$row['venues'] = $venues_rsp['rows'];
+			}
+
+			$localities[] = $row;
+		}
+
+		return okay(array(
+			'rows' => $localities,
+			'pagination' => $pagination,
+		));
+	}
+
+ 	#################################################################
+
+	function privatesquare_checkins_venues_for_user(&$user, $more=array()){
+
+		$defaults = array(
+			'stats_mode' => 0,
+			'per_page' => 10,
+			'page' => 1,
+		);
+
+		$more = array_merge($defaults, $more);
+
+		# TO DO: date ranges
+
+		$cluster_id = $user['cluster_id'];
+		$enc_user = AddSlashes($user['id']);
+
+		$sql = "SELECT venue_id, COUNT(id) AS count FROM PrivatesquareCheckins WHERE user_id='{$enc_user}'";
+
+		if (isset($more['locality'])){
+			$enc_loc = AddSlashes($more['locality']);
+			$sql .= " AND locality='{$enc_loc}'";
+		}
+
+		$sql .= " GROUP BY venue_id";
+
+		$rsp = db_fetch_users($cluster_id, $sql);
+
+		$tmp = array();
+
+		foreach ($rsp['rows'] as $row){
+			$tmp[$row['venue_id']] = $row['count'];
+		}
+
+		arsort($tmp);
+
+		$venue_ids = array_keys($tmp);
+		$total_count = count($venue_ids);
+
+		$rows = array();
+		$pagination = array();
+
+		if ($more['stats_mode']){
+			# do not paginate
+		}
+
+		else {
+
+			$page_count = ceil($total_count / $more['per_page']);
+			$last_page_count = $total_count - (($page_count - 1) * $more['per_page']);
+
+			$pagination = array(
+				'total_count' => $total_count,
+				'page' => $more['page'],
+				'per_page' => $more['per_page'],
+				'page_count' => $page_count,
+			);
+
+			if ($GLOBALS['cfg']['pagination_assign_smarty_variable']){
+				$GLOBALS['smarty']->assign('pagination', $pagination);
+			}
+
+			$offset = $more['per_page'] * ($more['page'] - 1);
+			$venue_ids = array_slice($venue_ids, $offset, $more['per_page']);
+		}
+
+		foreach ($venue_ids as $venue_id){
+
+			$count = $tmp[$venue_id];
+
+			if ($more['stats_mode']){
+
+				$venue = array(
+					'venue_id' => $venue_id,
+				);
+			}
+
+			else {
+				$venue = foursquare_venues_get_by_venue_id($venue_id);
+			}
+
+			$venue['count'] = $count;
+
+			$rows[] = $venue;
+		}
+
+		return okay(array(
+			'rows' => $rows,
+			'pagination' => $pagination
+		));
+	}
+
+ 	#################################################################
+
+	function privatesquare_checkins_inflate_extras(&$row, $more=array()){
 
 		$venue_id = $row['venue_id'];
 		$venue = foursquare_venues_get_by_venue_id($venue_id); 
@@ -106,6 +300,17 @@
 			if ($weather = json_decode($row['weather'], "as hash")){
 				$row['weather'] = $weather;
 			}
+		}
+
+		# This doesn't make any sense unless you've got something
+		# like memcache installed. The volume of DB calls that get
+		# made relative to the actual use of any data here is out
+		# of control. Leaving it as an FYI / nice to have...
+		# (20120301/straup)
+
+		if ((isset($more['inflate_locality'])) && ($woeid = $row['locality'])){
+			$loc = reverse_geoplanet_get_by_woeid($woeid, 'locality');
+		 	$row['locality'] = $loc;
 		}
 
 		# note the pass by ref
@@ -170,6 +375,9 @@
 
 		$cluster_id = $user['cluster_id'];
 		$enc_user = AddSlashes($user['id']);
+
+		# TO DO: group by venue_id in memory since the following will always
+		# result in a filesort (20120301/straup)
 
 		$sql = "SELECT venue_id, COUNT(id) AS count FROM PrivatesquareCheckins WHERE user_id='{$enc_user}'";
 		$sql .= " AND latitude BETWEEN {$bbox[0]} AND {$bbox[2]} AND longitude BETWEEN {$bbox[1]} AND {$bbox[3]}";
@@ -246,38 +454,6 @@
 
 		$sql = "SELECT * FROM PrivatesquareCheckins WHERE user_id='{$enc_user}' AND checkin_id='{$enc_id}'";
 		return db_single(db_fetch_users($cluster_id, $sql));
-	}
-
- 	#################################################################
-
-	function privatesquare_checkins_venues_for_user(&$user, $more=array()){
-
-		$cluster_id = $user['cluster_id'];
-		$enc_user = AddSlashes($user['id']);
-
-		# please to be caching me; this will always filesort...
-
-		$sql = "SELECT venue_id, COUNT(id) AS cnt FROM PrivatesquareCheckins";
-		$sql .= " WHERE user_id='{$enc_user}'";
-		$sql .= " GROUP BY venue_id";
-		$sql .= " ORDER BY cnt DESC, created DESC";
-
-		$rsp = db_fetch_paginated_users($cluster_id, $sql, $more);
-
-		if (! $rsp['ok']){
-			return $rsp;
-		}
-
-		$venues = array();
-
-		foreach ($rsp['rows'] as $row){
-			$venue = foursquare_venues_get_by_venue_id($row['venue_id']); 
-			$venue['count'] = $row['cnt'];
-			$venues[] = $venue;
-		}
-
-		$rsp['rows'] = $venues;
-		return $rsp;
 	}
 
  	#################################################################
