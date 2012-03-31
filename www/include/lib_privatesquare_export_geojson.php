@@ -4,7 +4,7 @@
 
 	##############################################################################
 
-	function privatesquare_export_geojson($fh, $checkins){
+	function privatesquare_export_geojson($fh, $checkins, $more=array()){
 
 		$features = array();
 
@@ -33,6 +33,7 @@
 			$nelon = (isset($nelon)) ? max($nelon, $lon) : $lon;
 
 			$features[] = array(
+				'type' => 'Feature',
 				'id' => $row['id'],
 				'properties' => $row,
 				'geometry' => array(
