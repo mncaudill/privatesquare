@@ -1,3 +1,33 @@
+# The base set of sensible PHP options. You could put these in your
+# php.ini file too, but having them in your Apache config puts
+# everything in one place. Magic quotes off because they are stupid.
+# Register globals off for the same reason. Track errors is so that
+# we can at least get at the error messages we hide using @func().
+# last_modified is a bad idea if we have any dynamic content. Short
+# tags make for a few saved bytes of cruft and are fine unless you're
+# running another XML preprocessor over your code (wtf?).
+
+# Expermental: Will add notes about this if it actually works; if not
+# it never happened...
+
+<IfModule mod_php5.c>
+
+php_value magic_quotes_gpc 0
+php_value register_globals 0
+php_value magic_quotes_runtime 0
+php_value track_errors 1
+php_value last_modified off
+php_value short_open_tag on
+
+php_flag display_errors on
+
+# this sets all current and future error flags on, except for E_NOTICE
+# which can go fuck itself. we have some separate code for checking the
+# one notice we do care about.
+php_value error_reporting 2147483639
+
+</IfModule>
+
 #
 # Hey! Everything in here is better suited to httpd.conf, since
 # we get a performance boost if we can turn off AllowOverride and
@@ -14,27 +44,7 @@
 # more explicit caching with Expires headers anyway.
 FileETag none
 
-# The base set of sensible PHP options. You could put these in your
-# php.ini file too, but having them in your Apache config puts
-# everything in one place. Magic quotes off because they are stupid.
-# Register globals off for the same reason. Track errors is so that
-# we can at least get at the error messages we hide using @func().
-# last_modified is a bad idea if we have any dynamic content. Short
-# tags make for a few saved bytes of cruft and are fine unless you're
-# running another XML preprocessor over your code (wtf?).
-php_value magic_quotes_gpc 0
-php_value register_globals 0
-php_value magic_quotes_runtime 0
-php_value track_errors 1
-php_value last_modified off
-php_value short_open_tag on
-
-php_flag display_errors on
-
-# this sets all current and future error flags on, except for E_NOTICE
-# which can go fuck itself. we have some separate code for checking the
-# one notice we do care about.
-php_value error_reporting 2147483639
+# The base set of sensible PHP options have moved; they now live in www/php.ini.
 
 # Some basic pointers to php files
 DirectoryIndex index.php
@@ -43,6 +53,9 @@ ErrorDocument 403 /403.php
 
 # Get mod_rewrite fired up
 RewriteEngine on
+
+# See also: the 'php-ini' command in the root Makefile
+RewriteRule   ^php.ini		- [R=404,L]
 
 # Images
 
@@ -88,8 +101,15 @@ RewriteRule ^user/([0-9]+)/checkin(/([0-9a-f]+))/?$	user_checkin.php?foursquare_
 RewriteRule ^user/([0-9]+)/places(/page([0-9]+))?/?$		user_places.php?foursquare_id=$1&page=$3&%{QUERY_STRING}	[L]
 RewriteRule ^user/([0-9]+)/places/([0-9]+)(/page([0-9]+))?/?$	user_place.php?foursquare_id=$1&woeid=$2&page=$4&%{QUERY_STRING}	[L]
 
+RewriteRule ^user/([0-9]+)/atlas/?$							user_atlas_of_desire.php?foursquare_id=$1&%{QUERY_STRING}	[L]
+RewriteRule ^user/([0-9]+)/atlas/(([0-9]+)|([a-z]+))/nearby(/page([0-9]+))?/?$		user_atlas_nearby.php?foursquare_id=$1&status_id=$3&status_label=$4&page=$6&%{QUERY_STRING}	[L]
+RewriteRule ^user/([0-9]+)/atlas/(([0-9]+)|([a-z]+))/([0-9]+)(/page([0-9]+))?/?$	user_atlas.php?foursquare_id=$1&status_id=$3&status_label=$4&woeid=$5&page=$7&%{QUERY_STRING}	[L]
+RewriteRule ^user/([0-9]+)/atlas/(([0-9]+)|([a-z]+))(/page([0-9]+))?/?$			user_atlas.php?foursquare_id=$1&status_id=$3&status_label=$4&page=$6&%{QUERY_STRING}	[L]
+
 RewriteRule ^user/([0-9]+)/history/nearby/?$		user_history_nearby.php?foursquare_id=$1&%{QUERY_STRING}	[L]
 RewriteRule ^user/([0-9]+)/history/export(\.([a-z]+))?/?$	user_history_export.php?foursquare_id=$1&format=$3&%{QUERY_STRING}	[L]
 
 RewriteRule ^user/([0-9]+)/history(/page([0-9]+))?/?$	user_history.php?foursquare_id=$1&page=$3&%{QUERY_STRING}	[L]
 RewriteRule ^user/([0-9]+)/history/([0-9\-\;\:T]+)(/page([0-9]+))?/?$	user_history.php?foursquare_id=$1&when=$2&page=$4&%{QUERY_STRING}	[L]
+
+RewriteRule ^user/([0-9]+)/pending/?$			user_pending_checkins.php?foursquare_id=$1&%{QUERY_STRING}	[L]

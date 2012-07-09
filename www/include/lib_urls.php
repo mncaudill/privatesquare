@@ -29,6 +29,21 @@
 
  	#################################################################
 
+	# deprecated
+
+	function urls_lists_for_user(&$user){
+		return urls_atlas_of_desire_for_user($user);
+	}
+
+	function urls_atlas_of_desire_for_user($user){
+
+		$fsq_user = foursquare_users_get_by_user_id($user['id']);
+
+		return $GLOBALS['cfg']['abs_root_url'] . "user/{$fsq_user['foursquare_id']}/atlas/";
+	}
+
+ 	#################################################################
+
 	function urls_nearby_for_user(&$user){
 
 		$history = urls_history_for_user($user);

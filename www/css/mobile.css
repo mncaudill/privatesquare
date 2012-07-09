@@ -1,3 +1,21 @@
+#login {
+    font-size:8pt;
+    padding-top:5px;
+}
+
+#nav {
+}
+
+#status {
+    font-size: 1.2em;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+#message {
+    font-size: small !important;
+}
+
 #map-wrapper {
 	height: 100px !important;
 	margin-bottom: 10px;
@@ -20,8 +38,28 @@
     border-radius: 20px !important;
 }
 
+.marker-youarehere {
+    z-index: 100;
+    opacity:1;
+    background-color:#adadad !important;
+    /* background-color: #ffe48b; */
+}
+
 .marker-history-text {
     display:none;
+}
+
+.are-hereish {
+    display: none;
+}
+
+.marker-header-todo {
+    background-color:#008abe;
+    z-index:50;
+}
+
+.marker-history-todo {
+    background-color:#008abe !important;
 }
 
 select {
@@ -38,7 +76,7 @@ input[type=submit] {
     text-align:right !important;
 }
 
-.pag_middle {
+#pag_middle {
     display:none;
 }
 
@@ -94,4 +132,40 @@ input[type=submit] {
 
 #displaymap {
     height: 100px;
+}
+
+#deferred {
+    padding-top: 10px;
+}
+
+#status_update {
+    display:block;
+    margin-top:15px;
+}
+
+#status_update_ornot {
+    text-decoration:underline;
+    text-align:right;
+}
+
+#lists {
+    margin: 0px;
+    padding: 0px;
+    margin-left:20px;
+}
+
+#lists li {
+    font-size:1.25em !important;
+}
+
+.header-right-list {
+    display: block !important;
+    font-size:12pt !important;    
+    margin-top: 10px !important;
+    margin-bottom: 20px !important;
+    text-align:left;
+}
+
+.map-list {
+    margin-bottom: 0px !important;
 }

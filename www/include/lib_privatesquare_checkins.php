@@ -27,6 +27,39 @@
 
  	#################################################################
 
+	# Dunno... might move in to a separate library (20120705/straup)
+
+	function privatesquare_checkins_list_map($string_keys=0){
+
+		$status_map = privatesquare_checkins_status_map();
+		$list_map = array();
+
+		foreach ($status_map as $id => $label){
+
+			if (in_array($id, array(0, 1))){
+				continue;
+			}
+
+			$clean = str_replace(" ", "", $label);
+			$list_map[$id] = $clean;
+		}
+
+		if ($string_keys){
+			$list_map = array_flip($list_map);
+		}
+
+		return $list_map;
+	}
+
+ 	#################################################################
+
+	function privatesquare_checkins_is_valid_status($status_id){
+		$map = privatesquare_checkins_status_map();
+		return (isset($map[$status_id])) ? 1 : 0;
+	}
+
+ 	#################################################################
+
 	function privatesquare_checkins_create($checkin){
 
 		$user = users_get_by_id($checkin['user_id']);
@@ -50,6 +83,29 @@
 			$rsp['checkin'] = $checkin;
 		}
 
+		return $rsp;
+	}
+
+ 	#################################################################
+
+	function privatesquare_checkins_update(&$checkin, $update){
+
+		$user = users_get_by_id($checkin['user_id']);
+		$cluster_id = $user['cluster_id'];
+
+		# requires a schema change (20120703/straup)
+		# $update['last_modified'] = time();
+
+		$insert = array();
+
+		foreach ($update as $k => $v){
+			$insert[$k] = AddSlashes($v);
+		}
+
+		$enc_id = AddSlashes($checkin['id']);
+		$where = "id='{$enc_id}'";
+
+		$rsp = db_update_users($cluster_id, 'PrivatesquareCheckins', $insert, $where);
 		return $rsp;
 	}
 
@@ -95,6 +151,33 @@
 		}
 
 		return $rsp;
+	}
+
+ 	#################################################################
+
+	function privatesquare_checkins_statuses_for_user(&$user, $more=array()){
+
+		$cluster_id = $user['cluster_id'];
+		$enc_user = AddSlashes($user['id']);
+
+		$sql = "SELECT status_id, COUNT(id) AS cnt FROM PrivatesquareCheckins WHERE user_id='{$enc_user}'";
+
+		if (isset($more['venue_id'])){
+			$enc_venue = AddSlashes($more['venue_id']);
+			$sql .= " AND venue_id='{$enc_venue}'";
+		}
+
+		$sql .= " GROUP BY status_id";
+
+		$rsp = db_fetch_users($cluster_id, $sql);
+
+		$stats = array();
+
+		foreach ($rsp['rows'] as $row){
+			$stats[$row['status_id']] = $row['cnt'];
+		}
+
+		return $stats;
 	}
 
  	#################################################################
@@ -197,6 +280,96 @@
 
  	#################################################################
 
+	function privatesquare_checkins_venues_for_user_and_status(&$user, $status_id, $more=array()){
+
+		$defaults = array(
+			'stats_mode' => 0,
+			'per_page' => 10,
+			'page' => 1,
+			'dist' => .5
+		);
+
+		$more = array_merge($defaults, $more);
+
+		$cluster_id = $user['cluster_id'];
+
+		$enc_user = AddSlashes($user['id']);
+		$enc_status = AddSlashes($status_id);
+
+		# TO DO: indexes
+		# TO DO: check for nearby/geo
+
+		$sql = "SELECT * FROM PrivatesquareCheckins WHERE user_id='{$enc_user}' AND status_id='{$enc_status}'";
+
+		if (isset($more['locality'])){
+			$enc_loc = AddSlashes($more['locality']);
+			$sql .= " AND locality='{$enc_loc}'";
+		}
+
+		else if ((isset($more['latitude'])) && (isset($more['longitude']))){
+
+			loadlib("geo_utils");
+		
+			$dist = $more['dist'];
+			$unit = 'm';
+
+			# TO DO: sanity check to ensure max $dist
+
+			$bbox = geo_utils_bbox_from_point($more['latitude'], $more['longitude'], $dist, $unit);
+			$sql .= " AND latitude BETWEEN {$bbox[0]} AND {$bbox[2]} AND longitude BETWEEN {$bbox[1]} AND {$bbox[3]}";
+		}
+
+		$sql .= " ORDER BY created DESC";
+
+		$rsp = db_fetch_paginated_users($cluster_id, $sql, $more);
+
+		if (! $rsp['ok']){
+			return $rsp;
+		}
+
+		$rows = array();
+
+		foreach ($rsp['rows'] as $row){
+
+			$_more = array(
+				'inflate_locality' => 1,
+			);
+
+			privatesquare_checkins_inflate_extras($row, $_more);
+
+			# TO DO: OMG... INDEXES
+
+			$enc_venue = AddSlashes($row['venue_id']);
+			$enc_created = AddSlashes($row['created']);
+
+			$_sql = "SELECT COUNT(id) AS cnt FROM PrivatesquareCheckins WHERE user_id='{$enc_user}'";
+
+			if ($status_id == 2){
+				$_sql .= " AND status_id != '{$enc_status}'";
+			}
+
+			$_sql .= " AND venue_id='{$enc_venue}'";
+			$_sql .= " AND created > '{$enc_created}'";
+
+			$_rsp = db_single(db_fetch_users($cluster_id, $_sql));
+
+			$row['count_checkins'] = $_rsp['cnt'];
+			$rows[] = $row;
+		}
+
+		$rsp['rows'] = $rows;
+		return $rsp;
+	}
+
+ 	#################################################################
+
+	# TO DO: venues for status (notes)
+	# this should probably be it's own function because while it
+	# maybe should group on venue_id the requirements for how things
+	# are sorted are different and it's quickly turning in to a mess
+	# of if/else statements. See also, comments below about filesorts
+	# (20120701/straup)
+
 	function privatesquare_checkins_venues_for_user(&$user, $more=array()){
 
 		$defaults = array(
@@ -213,6 +386,8 @@
 		$enc_user = AddSlashes($user['id']);
 
 		$sql = "SELECT venue_id, COUNT(id) AS count FROM PrivatesquareCheckins WHERE user_id='{$enc_user}'";
+
+		# TO DO: indexes so we can do status for user and city...
 
 		if (isset($more['locality'])){
 			$enc_loc = AddSlashes($more['locality']);
@@ -275,6 +450,9 @@
 			else {
 				$venue = foursquare_venues_get_by_venue_id($venue_id);
 			}
+
+			$has_visited = privatesquare_checkins_utils_has_visited_venue($user, $venue_id);
+			$venue['has_visited'] = $has_visited;
 
 			$venue['count'] = $count;
 
@@ -366,7 +544,7 @@
 
 		loadlib("geo_utils");
 		
-		$dist = (isset($more['dist'])) ? floatval($more['dist']) : 0.2;
+		$dist = (isset($more['dist'])) ? floatval($more['dist']) : 0.5;
 		$unit = (geo_utils_is_valid_unit($more['unit'])) ? $more['unit'] : 'm';
 
 		# TO DO: sanity check to ensure max $dist
@@ -402,6 +580,10 @@
 		foreach ($tmp as $venue_id => $count){
 			$venue = foursquare_venues_get_by_venue_id($venue_id); 
 			$venue['count_checkins'] = $count;
+
+			$has_visited = privatesquare_checkins_utils_has_visited_venue($user, $venue_id);
+			$venue['has_visited'] = $has_visited;
+
 			$venues[] = $venue;
 		}
 
@@ -454,6 +636,64 @@
 
 		$sql = "SELECT * FROM PrivatesquareCheckins WHERE user_id='{$enc_user}' AND checkin_id='{$enc_id}'";
 		return db_single(db_fetch_users($cluster_id, $sql));
+	}
+
+ 	#################################################################
+
+	function privatesquare_checkins_delete(&$checkin){
+
+		$user = users_get_by_id($checkin['user_id']);
+		$cluster_id = $user['cluster_id'];
+
+		$enc_id = AddSlashes($checkin['id']);
+
+		$sql = "DELETE FROM PrivatesquareCheckins WHERE id='{$enc_id}'";
+
+		return db_write_users($cluster_id, $sql);
+
+		# But wait, you say. How does one delete the checkin from
+		# foursquare itself. You can't delete checkins via the API
+		# because... uh... because, god hates you I guess. So dumb.
+		# (20120505/straup)
+
+		# See also:
+		# https://groups.google.com/group/foursquare-api/browse_thread/thread/0400eedc66058702
+
+	}
+
+ 	#################################################################
+
+	function privatesquare_checkins_bookends_for_date(&$user, $ymd){
+
+		$bookends = array(
+			'before' => null,
+			'after' => null,
+		);
+
+		$fmt = "Y-m-d";
+
+		$cluster_id = $user['cluster_id'];
+
+		$start = strtotime("{$ymd} 00:00:00");
+		$stop = strtotime("{$ymd} 23:59:59");
+
+		$enc_user = AddSlashes($user['id']);
+		$enc_start = AddSlashes($start);
+		$enc_stop = AddSlashes($stop);
+
+		$sql = "SELECT * FROM PrivatesquareCheckins WHERE user_id='{$enc_user}' AND created < {$enc_start} ORDER BY created DESC LIMIT 1";
+
+		if ($row = db_single(db_fetch_users($cluster_id, $sql))){
+			$bookends['before'] = date($fmt, $row['created']);
+		}
+
+		$sql = "SELECT * FROM PrivatesquareCheckins WHERE user_id='{$enc_user}' AND created > {$enc_stop}";
+
+		if ($row = db_single(db_fetch_users($cluster_id, $sql))){
+			$bookends['after'] = date($fmt, $row['created']);
+		}
+
+		return $bookends;
 	}
 
  	#################################################################

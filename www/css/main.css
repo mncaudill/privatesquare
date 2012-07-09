@@ -14,6 +14,20 @@ body {
 	padding: 0;
 }
 
+#deferred {
+    display:none;
+    margin-top:10px;
+}
+
+#message {
+	border-bottom: solid thin;
+	margin-bottom: 10px;
+	padding: 10px;
+	width: 100%;
+	background-color:#eee;
+	text-align:center;
+}
+
 #nav {
 	background-color: #fff;
 	padding: 0.5em 1em;
@@ -67,6 +81,11 @@ p.message {
 	background-color: #9f9;
 }
 
+#pag_bookends {
+    margin-left:auto;
+    margin-right:auto;
+    text-align:center;
+}
 
 /*pagination*/
 #pagination{
@@ -109,15 +128,32 @@ select {
     margin-bottom:20px;
 }
 
+input[type=text] {
+    font-size:1.5em;
+    margin-bottom:20px;
+    border:solid thin;
+    width:99%;
+    padding:5px;
+}
+
 input[type=submit] {
     font-size:1.5em;
     margin-bottom:20px;
     border:solid thin;
 }
 
+.admin {
+    border-top:solid thin;
+    margin-top:5px;
+    padding-top:5px;
+    padding-bottom:10px;
+    background-color:#ededed;
+    font-weight:100;
+}
+
 #status {
     font-size:1.6em;
-    font-family:serif;
+    margin-bottom:15px;
 }
 
 #again {
@@ -163,12 +199,6 @@ q {
     font-size:11px;
     font-weight:700;
     color:#fff;
-    /*
-    -moz-border-radius: 20px;
-    -webkit-border-radius: 20px;
-    -khtml-border-radius: 20px;
-    border-radius: 20px;
-    */
 }
 
 .marker-header {
@@ -182,6 +212,28 @@ q {
     -webkit-border-radius: 10px !important;
     -khtml-border-radius: 10px !important;
     border-radius: 10px !important;
+    z-index:100;    
+}
+
+.marker-header-todo {
+    background-color:#008abe;
+    z-index:50;
+}
+
+.marker-youarehere {
+    z-index: 500 auto;
+    opacity:1;
+    background-color:#adadad;
+}
+
+.marker-youarehere:hover {
+    z-index: 500 !important;
+    background-color:#fff;
+    color:#000;
+}
+
+.marker-history-todo {
+    background-color:#008abe;
 }
 
 .map-tile {
@@ -257,6 +309,11 @@ li{
     margin-bottom:25px;
 }
 
+#deleteme {
+    display:none;
+    border:solid thin;
+}
+
 .geo {
     line-height: 1.25em;
 }
@@ -318,6 +375,12 @@ button {
     margin: 0px;
 }
 
+#venue_stats ul {
+    font-size: small;
+    padding: 0px;
+    margin: 0px;
+}
+
 #venue_details ul {
     font-size: small;
     padding: 0px;
@@ -374,4 +437,44 @@ button {
 .permalink a {
     color:#ccc;
     text-decoration:none;
+}
+
+#youmeanttosay {
+    text-decoration:underline;
+    font-size:small;
+    margin-bottom:15px;
+}
+
+#status_update_ornot {
+    text-decoration:underline;
+}
+
+#status_update_wrapper {
+    display:none;
+    margin-bottom:15px;
+    font-size: small;
+}
+
+.nearby_all {
+    font-size:11px;
+    display:block;
+    font-weight:100;
+    margin-top:5px;
+}
+
+#lists li {
+    font-size:1.75em !important;
+    color: #adadad;
+    font-weight:700;
+}
+
+#lists li a {
+    text-decoration:none;
+    margin-bottom:10px;
+}
+
+#lists .nearbyhere {
+    font-size:small !important;
+    margin-bottom:20px;
+    font-weight:100;
 }
